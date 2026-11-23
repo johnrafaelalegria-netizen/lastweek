@@ -1,0 +1,37 @@
+LAST WEEK REPORT 2026-11-23 15:29 datjohnrasberri
+Names: JOHN-RAFAEL ALEGRIA, HUU DAT HUYNH
+R1 flask 3.1.3 | paho-mqtt 2.2.0
+R2 GET /     -> 200
+R3 GET /nope -> 404
+R4 network address, before -> 000
+R5 network address, after  -> 000
+R6 5000/tcp                   ALLOW       Anywhere                  
+R6 5000/tcp (v6)              ALLOW       Anywhere (v6)             
+R7 /          is text/html; charset=utf-8
+R8 /api/light is application/json
+R9 {"pct":49.7,"station":"s01","status":"online","updated":"16:00:34"}
+R9 {"pct":49.3,"station":"s01","status":"online","updated":"16:00:37"}
+R10 node stopped: {"pct":50.3,"station":"s01","status":"online","updated":"16:00:52"}
+R11 {"ok":true,"sp":30.0}
+R12 GET /api/setpoint -> 405
+Last Week check 2026-11-23 16:05:27 host datjohnrasberri
+ 1 PASS  page answers on localhost                  200 text/html
+ 2 PASS  page answers on 192.168.50.70              200
+ 3 PASS  /api/light answers with JSON               200 application/json
+ 4 PASS  unknown path /nope is refused              404
+ 5 PASS  readings are live (two reads, 3 s apart)   29.7 -> 30.3  status online
+ 6 PASS  GET /api/setpoint is refused               405
+ 7 PASS  POST sp=70 reaches bench/s01/cmd           200 heard ['sp:70']
+ 8 PASS  reading follows the setpoint (30.3 -> 70)  within 3 points after 7 s
+RESULT 8/8  station s01  host datjohnrasberri  2026-11-23 16:05
+W1 One Set press, hop by hop, from browser back to browser:
+1)Browser sends HTTP POST /api/setpoint to Flask. 
+2) Flask publishes sp:70 over MQTT to the broker. 
+3) The broker delivers it on bench/s01/cmd to the node, which moves the light toward 70. 
+4) The node publishes the new light level on bench/s01/light. 
+5) The broker delivers it to on_message in app.py, which writes the dict latest. 
+6) The browser's next GET /api/light reads the dict and the page redraws.
+W2 Why does the dict "latest" exist? One sentence:
+MQTT messages arrive when the node decides (every 1 s) but HTTP requests arrive when the browser decides (every 2 s) and must be answered at once, so latest stores the newest reading for the route to read without waiting.
+W3 How old can the number on the page be, in seconds, and why:
+At most 3 seconds: the node publishes every 1 s, so the value in the dict is at most 1 s old when read, and the page polls every 2 s, so 1 + 2 = 3 s.
